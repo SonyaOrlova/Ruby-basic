@@ -10,33 +10,37 @@ class Train
   end
 
   def add_route(route)
-    @route = route
+    @stations = route.stations
 
-    move(0)
+    @current_station_index = 0
+
+    move(@current_station_index)
   end
 
   def current_station
-    @route.stations[@current_station_index] if @current_station_index
+    get_station(@current_station_index)
   end
   
   def next_station
-    @route.stations[next_station_index] if next_station_index
+    get_station(next_station_index)
   end
 
   def prev_station
-    @route.stations[prev_station_index] if prev_station_index
+    get_station(prev_station_index)
   end
 
   def move_next_station
-    move(next_station_index) if next_station_index
+    move(next_station_index)
   end
 
   def move_prev_station
-    move(prev_station_index) if prev_station_index
+    move(prev_station_index)
   end
 
+  MAX_SPEED = 500
+
   def speed_up
-    @speed = 500
+    @speed = MAX_SPEED
   end
 
   def speed_down
@@ -54,17 +58,25 @@ class Train
   private
   
   def next_station_index
-    @current_station_index + 1 if @current_station_index && @current_station_index != @route.stations.length - 1
+    @current_station_index + 1 if @current_station_index && @current_station_index != @stations.length - 1
   end
 
   def prev_station_index
     @current_station_index - 1 if @current_station_index && @current_station_index != 0
   end
 
-  def move(station_index)
-    @route.stations[@current_station_index].remove_train(self) if @current_station_index
+  def get_station(station_index)
+    station_index && @stations[station_index]
+  end
 
-    @route.stations[station_index].add_train(self)
+  def move(station_index)
+    return unless station_index
+
+    station_from = @stations[@current_station_index]
+    station_to = @stations[station_index]
+
+    station_from.remove_train(self)
+    station_to.add_train(self)
 
     @current_station_index = station_index
   end
