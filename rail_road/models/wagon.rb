@@ -1,4 +1,8 @@
+require_relative '../modules/manufacturer'
+
 class Wagon
+  include Manufacturer
+
   attr_reader :id, :type, :train
 
   def initialize(id, type = nil)

@@ -1,7 +1,13 @@
+require_relative '../modules/instance_counter'
+
 class Route
+  include InstanceCounter
+
   attr_reader :id, :from, :to, :way_stations
 
   def initialize(from, to)
+    register_instance
+
     @from = from
     @to = to
 
