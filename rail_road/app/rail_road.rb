@@ -120,12 +120,16 @@ class RailRoad
       "Станции",
       "Введите название станции, которую хотите создать"
     ) do |result|
-      is_dublicated = @stations.detect {|station| station.name == result }
-
-      if is_dublicated
-        puts colorize("Станция с таким названием уже существует", :red)
+      begin
+        station = Station.new(result)
+      rescue ArgumentError => e
+        if (e.message == 'duplicate_name')
+          puts colorize("Такая станция уже существует", :red)
+        else
+          raise
+        end
       else
-        @stations << Station.new(result)
+        @stations << station
         puts colorize("Создана станция #{result}", :green)
       end
     end
@@ -157,17 +161,15 @@ class RailRoad
         next
       end
 
-      if from == to
-        puts colorize("Начальная и конечная станции совпадают. Попробуйте еще раз.", :red)
-        next
-      end
-
-      is_dublicated = @routes.detect {|route| route.id == "#{from.name}-#{to.name}" }
-
-      if is_dublicated
-        puts colorize("Такой маршрут уже существует", :red)
-      else
+      begin
         route = Route.new(from, to)
+      rescue ArgumentError => e
+        if (e.message == 'duplicate_station')
+          puts colorize("Начальная и конечная станции не должны совпадать", :red)
+        else
+          raise
+        end
+      else
         @routes << route
         puts colorize("Создан маршрут #{route.id} со станциями #{inspect(:@name, [route.from, route.to])}", :green)
       end
@@ -175,17 +177,22 @@ class RailRoad
   end
 
   def create_trains
-    typeMap = {
-      'c' => {
-        type: 'cargo',
-        ru: 'грузовой',
-        class_item: CargoTrain
-      },
-      'p' => {
-        type: 'passenger',
-        ru: 'пассажирский',
-        class_item: PassengerTrain
-      }
+    typeMap = Hash.new({
+      type: 'another',
+      ru: 'прочий',
+      class_item: Train
+    })
+
+    typeMap['c'] = {
+      type: 'cargo',
+      ru: 'грузовой',
+      class_item: CargoTrain
+    }
+
+    typeMap['p'] = {
+      type: 'passenger',
+      ru: 'пассажирский',
+      class_item: PassengerTrain
     }
 
     show_submenu_block(
@@ -194,17 +201,25 @@ class RailRoad
     ) do |result|
       id, type = result.split(",")
 
-      if !(typeMap.key? type)
-        puts colorize("Указан некорректный тип поезда. Попробуйте еще раз", :red)
+      is_dublicated = Train.find(id)
+
+      if is_dublicated
+        puts colorize("Поезд с идентификатором #{id} уже существует", :red)
         next
       end
 
-      is_dublicated = @trains.detect {|train| train.id == id && train.type == typeMap[type][:type] }
-
-      if is_dublicated
-        puts colorize("Поезд с идентификатором #{id} и типом #{typeMap[type][:ru]} уже существует", :red)
-      else
+      begin
         train = typeMap[type][:class_item].new(id)
+      rescue ArgumentError => e
+        case e.message
+          when 'incorrect_id'
+            puts colorize("Введен некорректный формат идентификатора поезда", :red)
+          when 'incorrect_type'
+            puts colorize("Введен некорректный тип поезда", :red)
+          else
+            raise
+        end
+      else
         @trains << train
         puts colorize("Создан #{typeMap[type][:ru]} поезд с идентификатором #{train.id}", :green)
       end
@@ -212,17 +227,22 @@ class RailRoad
   end
 
   def create_wagons
-    typeMap = {
-      'c' => {
-        type: 'cargo',
-        ru: 'грузовой',
-        class_item: CargoWagon
-      },
-      'p' => {
-        type: 'passenger',
-        ru: 'пассажирский',
-        class_item: PassengerWagon
-      }
+    typeMap = Hash.new({
+      type: 'another',
+      ru: 'прочий',
+      class_item: Wagon
+    })
+
+    typeMap['c'] = {
+      type: 'cargo',
+      ru: 'грузовой',
+      class_item: CargoWagon
+    }
+
+    typeMap['p'] = {
+      type: 'passenger',
+      ru: 'пассажирский',
+      class_item: PassengerWagon
     }
 
     show_submenu_block(
@@ -231,17 +251,15 @@ class RailRoad
     ) do |result|
       id, type = result.split(",")
 
-      if !(typeMap.key? type)
-        puts colorize("Указан некорректный тип вагона. Попробуйте еще раз", :red)
-        next
-      end
-
-      is_dublicated = @wagons.detect {|wagon| wagon.id == id && wagon.type == typeMap[type][:type] }
-
-      if is_dublicated
-        puts colorize("Вагон с идентификатором #{id} и типом #{typeMap[type][:ru]} уже существует", :red)
-      else
+      begin
         wagon = typeMap[type][:class_item].new(id)
+      rescue ArgumentError => e
+        if (e.message == 'incorrect_type')
+          puts colorize("Введен некорректный тип вагона", :red)
+        else
+          raise
+        end
+      else
         @wagons << wagon
         puts colorize("Создан #{typeMap[type][:ru]} вагон с идентификатором #{wagon.id}", :green)
       end
@@ -728,7 +746,7 @@ class RailRoad
           if wagon
             begin
               train.add_wagon(wagon)
-            rescue => e
+            rescue ArgumentError => e
               typeMap = { 'cargo' => 'грузовой', 'passenger' => 'пассажирский'}
 
               case e.message
@@ -777,7 +795,7 @@ class RailRoad
 
           if wagon
             begin
-              train.add_wagon(wagon)
+              train.remove_wagon(wagon)
             rescue => e
               if (e.message == 'nonzero_speed')
                 puts colorize("Невозможно отцепить вагон, поезд #{train.id} находится в движении, текущая скорость - #{train.speed}", :red)

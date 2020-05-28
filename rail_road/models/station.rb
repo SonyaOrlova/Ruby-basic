@@ -1,18 +1,23 @@
 require_relative '../modules/instance_counter'
+require_relative '../modules/validation_checker'
 
 class Station
   include InstanceCounter
+  include ValidationChecker
 
   attr_reader :name, :trains
 
-  @@stations = []
+  @@stations = {}
 
   def initialize(name)
-    register_instance
-
-    @@stations << self
-
     @name = name
+
+    validate!
+
+    register_instance
+    
+    @@stations[name] = self
+
     @trains = []
   end
 
@@ -30,5 +35,9 @@ class Station
 
   def _remove_train(train)
     @trains.delete(train)
+  end
+
+  def validate!
+    raise ArgumentError, 'duplicate_name' if @@stations[@name]
   end
 end
