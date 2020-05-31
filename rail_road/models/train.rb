@@ -85,6 +85,10 @@ class Train
     @wagons.delete(wagon) 
   end
 
+  def each_wagon
+    @wagons.each { |wagon| yield wagon }
+  end
+
   protected # доступны из подклассов
 
   def max_speed

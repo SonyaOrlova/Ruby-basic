@@ -109,6 +109,7 @@ class RailRoad
   def show_menu_wagons
     actions = {
       create: lambda { create_wagons },
+      manage: lambda { manage_wagons },
       review: lambda { review_wagons }
     }
 
@@ -247,14 +248,19 @@ class RailRoad
 
     show_submenu_block(
       "Вагоны",
-      "Введите идентификатор вагона и его тип ('c' = #{typeMap['c'][:ru]}, 'p' = #{typeMap['p'][:ru]}) через запятую",
+      "Введите идентификатор вагона, его тип ('c' = #{typeMap['c'][:ru]}, 'p' = #{typeMap['p'][:ru]}), и кол-во мест для пассажирского вагона/объем для грузового через запятую",
     ) do |result|
-      id, type = result.split(",")
+      id, type, property = result.split(",")
+
+      if !id || !type || !property
+        puts colorize("Введены не все данные. Попробуйте еще раз", :red)
+        next
+      end
 
       begin
-        wagon = typeMap[type][:class_item].new(id)
+        wagon = typeMap[type][:class_item].new(id, property.to_i)
       rescue ArgumentError => e
-        if (e.message == 'incorrect_type')
+        if e.message == 'incorrect_type'
           puts colorize("Введен некорректный тип вагона", :red)
         else
           raise
@@ -282,9 +288,11 @@ class RailRoad
       puts colorize("Информация о станции #{station.name}:", :green)
 
       if station.trains.length > 0
-        puts colorize("* поезда на станции: #{inspect(:@id, station.trains)}", :green)
-        puts colorize("Из них грузовые: #{inspect(:@id, station.trains_by_type("cargo"))}", :green)
-        puts colorize("Из них пассажирские: #{inspect(:@id, station.trains_by_type("passenger"))}", :green)
+        typeMap = { 'cargo' => 'грузовой', 'passenger' => 'пассажирский'}
+
+        puts colorize("* поезда на станции:", :green)
+
+        station.each_train { |train| puts colorize("поезд с идентификатором #{train.id}, типом #{typeMap[train.type]}, кол-во вагонов #{train.wagons.length}", :green) }
       else
         puts colorize("* на станции нет поездов", :red)
       end
@@ -338,13 +346,7 @@ class RailRoad
         next
       end
 
-      puts colorize("Информация о вагоне #{wagon.id}:", :green)
-      puts colorize("* тип - #{typeMap[wagon.type]}", :green)
-      if wagon.train
-        puts colorize("* прицеплен к поезду - #{wagon.train.id}", :green)
-      else
-        puts colorize("* вагон свободен", :red)
-      end
+      inspect_wagon(wagon, :green)
     end
   end
 
@@ -426,6 +428,59 @@ class RailRoad
           remove_wagon_from_train(train)
         else
           show_menu_trains
+          break
+        end
+    end
+  end
+
+  def manage_wagons
+    show_submenu_block(
+      "Вагоны",
+      "Введите идентификатор вагона, в который необходимо внести изменения",
+      true
+    ) do |result|
+      wagon = @wagons.detect { |wagon| wagon.id == result }
+
+      if !wagon
+        puts colorize("Введен несуществующий идентификатор вагона. Попробуйте еще раз", :red)
+        next
+      end
+
+      inspect_wagon(wagon, :pink)
+
+      puts "Введите 1, если хотите занять свободный объем" if wagon.type == 'cargo'
+      puts "Введите 1, если хотите занять свободное место" if wagon.type == 'passenger'
+      puts "Введите 0 или другое значение, если хотите вернуться в меню блока 'Вагоны'"
+
+      result = gets.chomp
+
+      case result
+        when '1'
+          if wagon.type == 'cargo'
+           puts colorize("Введите кол-во объема, которое хотите занять в вагоне", :yellow)
+
+           volume = gets.chomp.to_i
+          end
+
+          begin
+            wagon.occupy_place(volume) if wagon.type == 'cargo'
+            wagon.occupy_place if wagon.type == 'passenger'
+          rescue ArgumentError => e
+            if e.message == 'no_available_place'
+              puts colorize("Невозможно занять указанное кол-во объема, свободно - #{wagon.available_place}", :red) if wagon.type == 'cargo'
+              puts colorize("Невозможно занять место, свободных мест нет", :red) if wagon.type == 'passenger'
+            else
+              raise
+            end
+          else
+            puts colorize("Вы заняли #{volume} объема", :green) if wagon.type == 'cargo'
+            puts colorize("Кол-во занятого объема - #{wagon.occupied_place}, кол-во свободного объема - #{wagon.available_place}", :pink) if wagon.type == 'cargo'
+
+            puts colorize("Вы заняли место", :green) if wagon.type == 'passenger'
+            puts colorize("Кол-во занятых мест - #{wagon.occupied_place}, кол-во свободных мест - #{wagon.available_place}", :pink) if wagon.type == 'passenger'
+          end
+        else
+          show_menu_wagons
           break
         end
     end
@@ -545,17 +600,35 @@ class RailRoad
       puts colorize("* маршрут - не присвоен", color)
     end
 
+    puts colorize("* текущая скорость - #{train.speed}", color)
+
     puts colorize("* текущая станция - #{train.current_station.name}", color) if train.current_station
     puts colorize("* следующая станция - #{train.next_station.name}", color) if train.next_station
     puts colorize("* предыдущая станция - #{train.prev_station.name}", color) if train.prev_station
 
     if train.wagons.length > 0
-      puts colorize("* вагоны в количестве #{train.wagons.length} - #{inspect(:@id, train.wagons)}", color)
+      puts colorize("* вагоны:", color)
+
+      train.each_wagon { |wagon| inspect_wagon(wagon, color) }
     else
       puts colorize("* вагоны - отсутствуют", color)
     end
+  end
 
-    puts colorize("* текущая скорость - #{train.speed}", color)
+  def inspect_wagon(wagon, color)
+    typeMap = { 'cargo' => 'грузовой', 'passenger' => 'пассажирский'}
+
+    puts colorize("Информация о вагоне #{wagon.id}:", color)
+    puts colorize("* тип - #{typeMap[wagon.type]}", color)
+
+    if wagon.train
+      puts colorize("* прицеплен к поезду - #{wagon.train.id}", color)
+    else
+      puts colorize("* вагон свободен", :red)
+    end
+
+    puts colorize("* кол-во занятого объема - #{wagon.occupied_place}, кол-во свободного объема - #{wagon.available_place}", color) if wagon.type == 'cargo'
+    puts colorize("* кол-во занятых мест - #{wagon.occupied_place}, кол-во свободных мест - #{wagon.available_place}", color) if wagon.type == 'passenger'
   end
 
   def add_station_to_route(route)
