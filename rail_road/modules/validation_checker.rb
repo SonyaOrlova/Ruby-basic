@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 module ValidationChecker
   def valid?
     validate!
     true
-  rescue
+  rescue ArgumentError
     false
   end
 end

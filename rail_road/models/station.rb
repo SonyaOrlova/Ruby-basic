@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative '../modules/instance_counter'
 require_relative '../modules/validation_checker'
 
@@ -7,7 +9,15 @@ class Station
 
   attr_reader :name, :trains
 
-  @@stations = {}
+  class << self
+    attr_accessor :stations
+  end
+
+  @stations = {}
+
+  def self.all
+    stations
+  end
 
   def initialize(name)
     @name = name
@@ -15,14 +25,10 @@ class Station
     validate!
 
     register_instance
-    
-    @@stations[name] = self
+
+    self.class.stations[name] = self
 
     @trains = []
-  end
-
-  def self.all
-    @@stations
   end
 
   def each_train
@@ -30,11 +36,11 @@ class Station
   end
 
   def trains_by_type(type)
-    @trains.select { |train| train.type == type}
+    @trains.select { |train| train.type == type }
   end
 
   def _add_train(train)
-    @trains << train 
+    @trains << train
   end
 
   def _remove_train(train)
@@ -42,6 +48,6 @@ class Station
   end
 
   def validate!
-    raise ArgumentError, 'duplicate_name' if @@stations[@name]
+    raise ArgumentError, 'duplicate_name' if self.class.stations[@name]
   end
 end

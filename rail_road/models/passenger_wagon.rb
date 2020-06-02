@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PassengerWagon < Wagon
   attr_reader :available_seats_count, :occupied_seats_count
 

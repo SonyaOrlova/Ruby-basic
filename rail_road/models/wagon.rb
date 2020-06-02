@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative '../modules/manufacturer'
 require_relative '../modules/validation_checker'
 
@@ -7,7 +9,7 @@ class Wagon
 
   attr_reader :id, :type, :train, :available_place
 
-  TYPES = ['cargo', 'passenger']
+  TYPES = %w[cargo passenger].freeze
 
   def initialize(id, type = nil, place = nil)
     @id = id
@@ -24,14 +26,14 @@ class Wagon
     @train = train
   end
 
-  def _unhook()
+  def _unhook
     @train = nil
   end
 
   def occupy_place(size)
     available_place = @available_place - size
 
-    raise ArgumentError, 'no_available_place' if available_place < 0
+    raise ArgumentError, 'no_available_place' if available_place.negative?
 
     @available_place = available_place
   end
@@ -41,6 +43,6 @@ class Wagon
   end
 
   def validate!
-    raise ArgumentError, 'incorrect_type' if !(TYPES.include? @type)
+    raise ArgumentError, 'incorrect_type' unless TYPES.include? @type
   end
 end
