@@ -174,14 +174,13 @@ class RailRoad
       begin
         train = type_map[type][:class_item].new(id)
       rescue ArgumentError => e
-        case e.message
-        when 'incorrect_id'
-          puts colorize('Введен некорректный формат идентификатора поезда', :red)
-        when 'incorrect_type'
-          puts colorize('Введен некорректный тип поезда', :red)
-        else
-          raise
-        end
+        raise unless e.message == 'incorrect_type'
+
+        puts colorize('Введен некорректный тип поезда', :red)
+      rescue ValidationError => e
+        raise unless e.message == 'invalid_format'
+
+        puts colorize('Введен некорректный формат идентификатора поезда', :red)
       else
         @trains << train
         puts colorize("Создан #{type_map[type][:ru]} поезд с идентификатором #{train.id}", :green)

@@ -2,12 +2,12 @@
 
 require_relative '../modules/manufacturer'
 require_relative '../modules/instance_counter'
-require_relative '../modules/validation_checker'
+require_relative '../modules/validation'
 
 class Train
   include InstanceCounter
   include Manufacturer
-  include ValidationChecker
+  include Validation
 
   attr_reader :id, :type, :route, :wagons, :speed
 
@@ -18,6 +18,8 @@ class Train
   @@trains = {}
   # rubocop:enable Style/ClassVars
 
+  validate :id, :format, ID_FORMAT
+
   def self.find(id)
     @@trains[id]
   end
@@ -27,6 +29,7 @@ class Train
     @type = type
 
     validate!
+    custom_validate!
 
     register_instance
 
@@ -125,8 +128,7 @@ class Train
     @current_station_index = station_index
   end
 
-  def validate!
-    raise ArgumentError, 'incorrect_id' unless @id =~ ID_FORMAT
+  def custom_validate!
     raise ArgumentError, 'incorrect_type' unless TYPES.include? @type
   end
 end

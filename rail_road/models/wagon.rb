@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
 require_relative '../modules/manufacturer'
-require_relative '../modules/validation_checker'
+require_relative '../modules/validation'
 
 class Wagon
   include Manufacturer
-  include ValidationChecker
+  include Validation
 
   attr_reader :id, :type, :train, :available_place
 
   TYPES = %w[cargo passenger].freeze
+
+  validate :id, :presence
 
   def initialize(id, type = nil, place = nil)
     @id = id
@@ -17,6 +19,7 @@ class Wagon
     @place = place
 
     validate!
+    custom_validate!
 
     @train = nil
     @available_place = place
@@ -42,7 +45,7 @@ class Wagon
     @place - @available_place
   end
 
-  def validate!
+  def custom_validate!
     raise ArgumentError, 'incorrect_type' unless TYPES.include? @type
   end
 end

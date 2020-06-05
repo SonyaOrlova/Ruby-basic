@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
 require_relative '../modules/instance_counter'
-require_relative '../modules/validation_checker'
+require_relative '../modules/accessors'
 
 class Station
+  extend Accessors
+
   include InstanceCounter
-  include ValidationChecker
 
   attr_reader :name, :trains
+
+  attr_accessor_with_history :a, :b
+  strong_attr_accessor :c, String
 
   class << self
     attr_accessor :stations
@@ -22,7 +26,7 @@ class Station
   def initialize(name)
     @name = name
 
-    validate!
+    custom_validate!
 
     register_instance
 
@@ -47,7 +51,7 @@ class Station
     @trains.delete(train)
   end
 
-  def validate!
+  def custom_validate!
     raise ArgumentError, 'duplicate_name' if self.class.stations[@name]
   end
 end
